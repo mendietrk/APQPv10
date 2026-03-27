@@ -7,6 +7,7 @@ const path = require("path");
 const ejs = require("ejs");
 const puppeteer = require("puppeteer"); // O puppeteer-core, según usas
 const RegistroProduccion = require('../models/RegistroProduccion');
+const Medicion = require('./models/Medicion');
 
 router.get('/inventory', async (req, res) => {
   const inventario = await RegistroProduccion.find().sort({ fechaFabricacion: -1 });
@@ -1092,12 +1093,12 @@ function rango(arr) {
 }
 
 // 📄 Vista para formulario
-router.get('/subgrupo/nuevo', async (req, res) => {
+router.get('/subgrupo/nuevo1', async (req, res) => {
   const partes = await Par.find({ pa6: { $ne: "" } });
   res.render('formulario', { partes });
 });
 
-router.post('/subgrupo/nuevo', async (req, res) => {
+router.post('/subgrupo/nuevo1', async (req, res) => {
   const muestras = [
     parseFloat(req.body.muestra1),
     parseFloat(req.body.muestra2),
@@ -1183,6 +1184,103 @@ router.post('/subgrupo/importar', async (req, res) => {
   } catch (error) {
     console.error("Error en importación masiva:", error);
     res.status(500).send("Error al importar.");
+  }
+});
+
+// Vista para cargar SPC
+
+// GET → Mostrar formulario SPC
+router.get('/subgrupo/nuevo', async (req, res) => {
+  try {
+    const partes = await Par.find({ pa6: { $ne: "" } });
+    res.render('spc', { partes }); // 👈 ahora usa spc.ejs
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Error al cargar formulario");
+  }
+});
+
+
+router.post('/subgrupo/nuevo', async (req, res) => {
+  try {
+    const body = req.body;
+
+    // función segura (evita NaN)
+    const num = v => (v !== undefined && v !== "") ? parseFloat(v) : null;
+
+    const doc = {
+      numeroParte: body.numeroParte || null,
+      timestamp: new Date(),
+      peso: num(body.peso),
+
+      mediciones: {
+
+        // 🔹 NUEVO: caliper r pequeña
+        caliper_r_pequena: {
+          A: num(body.caliper_r_pequena_A),
+          B: num(body.caliper_r_pequena_B),
+          C: num(body.caliper_r_pequena_C)
+        },
+
+        r_pequena: {
+          A: num(body.r_pequena_A),
+          B: num(body.r_pequena_B),
+          C: num(body.r_pequena_C)
+        },
+
+        puntos: {},
+
+        grandeD1: {
+          A: num(body.grandeD1_A),
+          B: num(body.grandeD1_B),
+          C: num(body.grandeD1_C)
+        },
+
+        grandeD2: {
+          A: num(body.grandeD2_A),
+          B: num(body.grandeD2_B),
+          C: num(body.grandeD2_C)
+        }
+      }
+    };
+
+    // 🔹 puntos 1 a 10 (todos opcionales)
+    for (let i = 1; i <= 10; i++) {
+      doc.mediciones.puntos[`p${i}`] = {
+        peak: {
+          A: num(body[`p${i}_peak_A`]),
+          B: num(body[`p${i}_peak_B`]),
+          C: num(body[`p${i}_peak_C`])
+        },
+        root: {
+          A: num(body[`p${i}_root_A`]),
+          B: num(body[`p${i}_root_B`]),
+          C: num(body[`p${i}_root_C`])
+        }
+      };
+    }
+
+    // 🔹 punto 4.2
+    doc.mediciones.puntos["p4_2"] = {
+      peak: {
+        A: num(body.p4_2_peak_A),
+        B: num(body.p4_2_peak_B),
+        C: num(body.p4_2_peak_C)
+      },
+      root: {
+        A: num(body.p4_2_root_A),
+        B: num(body.p4_2_root_B),
+        C: num(body.p4_2_root_C)
+      }
+    };
+
+    await Medicion.create(doc);
+
+    res.redirect('/subgrupo/nuevo?ok=1');
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Error al guardar datos");
   }
 });
 
