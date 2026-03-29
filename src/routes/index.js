@@ -1199,7 +1199,86 @@ router.get('/subgrupo/nuevo', async (req, res) => {
     res.status(500).send("Error al cargar formulario");
   }
 });
+// GET → Mostrar formulario SPC
+router.get('/subgrupo/nuevo2', async (req, res) => {
+  try {
+    const partes = await Par.find({ pa6: { $ne: "" } });
+    res.render('spc1', { partes }); // 👈 ahora usa spc.ejs
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Error al cargar formulario");
+  }
+});
 
+router.get('/spcdiario', async (req, res) => {
+  try {
+    // 🔹 Obtener partes válidas (igual que tu lógica actual)
+    const partesDB = await Par.find({ pa6: { $ne: "" } });
+
+    // 🔹 Extraer solo el número de parte (ajusta si tu campo es diferente)
+    const partes = partesDB.map(p => p.pa6);
+
+    // 🔹 Obtener todas las mediciones (puedes filtrar después si quieres)
+    const datos = await Medicion.find().sort({ timestamp: 1 });
+
+    res.render('spcdiario', {
+      partes,
+      datos
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Error al cargar SPC Diario");
+  }
+});
+
+router.get('/spcdiario2', async (req, res) => {
+  try {
+    // 🔹 Obtener partes válidas (igual que tu lógica actual)
+    const partesDB = await Par.find({ pa6: { $ne: "" } });
+
+    // 🔹 Extraer solo el número de parte (ajusta si tu campo es diferente)
+    const partes = partesDB.map(p => p.pa6);
+
+    // 🔹 Obtener todas las mediciones (puedes filtrar después si quieres)
+    const datos = await Medicion.find().sort({ timestamp: 1 });
+
+    res.render('spcdiario2', {
+      partes,
+      datos
+    });
+
+    
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Error al cargar SPC Diario");
+  }
+});
+
+router.get('/spcdiario3', async (req, res) => {
+  try {
+    // 🔹 Obtener partes válidas (igual que tu lógica actual)
+    const partesDB = await Par.find({ pa6: { $ne: "" } });
+
+    // 🔹 Extraer solo el número de parte (ajusta si tu campo es diferente)
+    const partes = partesDB.map(p => p.pa6);
+
+    // 🔹 Obtener todas las mediciones (puedes filtrar después si quieres)
+    const datos = await Medicion.find().sort({ timestamp: 1 });
+
+    res.render('spcdiario3', {
+      partes,
+      datos
+    });
+
+    
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Error al cargar SPC Diario");
+  }
+});
 
 router.post('/subgrupo/nuevo', async (req, res) => {
   try {
