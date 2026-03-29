@@ -1518,6 +1518,18 @@ router.get('/grafico', async (req, res) => {
       };
     }
 
+    router.get("/editspc1/:id", async (req, res) => {
+      const medicion = await Medicion.findById(req.params.id).lean();
+      res.render('editspc', { medicion });
+    });
+    
+    router.post("/editspc1/:id", async (req, res) => {
+      await Medicion.findByIdAndUpdate(req.params.id, req.body);
+      res.redirect('/'); // o donde quieras
+    });
+
+    
+
     res.render('grafico', {
       promedios,
       rangos,
@@ -3213,8 +3225,97 @@ router.put('/actividades/:id', async (req, res) => {
       res.status(500).send("Error al obtener las actividades");
     }
   });
-  
 
+  router.get('/spcs', async (req, res) => {
+    try {
+      const mediciones = await Medicion.find()
+        .sort({ createdAt: -1 })
+        .lean();
+  
+      res.render('spcs', { mediciones });
+  
+    } catch (error) {
+      console.error(error);
+      res.status(500).send("Error al cargar SPCs");
+    }
+  });
+  
+  router.post('/spcs/update/:id', async (req, res) => {
+    try {
+      const body = req.body;
+  
+      const puntosKeys = [
+        'p1','p2','p3','p4','p5',
+        'p6','p7','p8','p9','p10','p4_2'
+      ];
+  
+      const update = {
+        numeroParte: body.numeroParte,
+        peso: body.peso
+      };
+  
+      // =========================
+      // r_pequena (TOTALMENTE EDITABLE)
+      // =========================
+      update["mediciones.r_pequena"] = {
+        A: body["rpeq_A"],
+        B: body["rpeq_B"],
+        C: body["rpeq_C"]
+      };
+  
+      // =========================
+      // puntos (PEAK / ROOT COMPLETO)
+      // =========================
+      const puntos = {};
+  
+      puntosKeys.forEach(p => {
+        puntos[p] = {
+          peak: {
+            A: body[`${p}_peak_A`],
+            B: body[`${p}_peak_B`],
+            C: body[`${p}_peak_C`]
+          },
+          root: {
+            A: body[`${p}_root_A`],
+            B: body[`${p}_root_B`],
+            C: body[`${p}_root_C`]
+          }
+        };
+      });
+  
+      update["mediciones.puntos"] = puntos;
+  
+      // =========================
+      // grandeD1 / grandeD2
+      // =========================
+      update["mediciones.grandeD1"] = {
+        A: body["grandeD1_A"],
+        B: body["grandeD1_B"],
+        C: body["grandeD1_C"]
+      };
+  
+      update["mediciones.grandeD2"] = {
+        A: body["grandeD2_A"],
+        B: body["grandeD2_B"],
+        C: body["grandeD2_C"]
+      };
+  
+      // =========================
+      // UPDATE FINAL
+      // =========================
+      await Medicion.findByIdAndUpdate(
+        req.params.id,
+        { $set: update },
+        { new: true }
+      );
+  
+      res.json({ ok: true });
+  
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ ok: false, error: error.message });
+    }
+  });
 
 // Exports
 module.exports = router
