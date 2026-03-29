@@ -9,6 +9,7 @@ const puppeteer = require("puppeteer"); // O puppeteer-core, según usas
 const RegistroProduccion = require('../models/RegistroProduccion');
 const Medicion = require('./models/Medicion');
 
+
 router.get('/inventory', async (req, res) => {
   const inventario = await RegistroProduccion.find().sort({ fechaFabricacion: -1 });
   res.render('inventory', { inventario });
@@ -1363,7 +1364,93 @@ router.post('/subgrupo/nuevo', async (req, res) => {
   }
 });
 
+router.get('/minitab', async (req, res) => {
+  try {
 
+    // 🔹 Obtener partes únicas (solo con datos válidos)
+    let partes = await Medicion.distinct('numeroParte');
+    partes = partes
+      .filter(p => p && p.trim() !== '')
+      .sort();
+
+    // 🔹 Filtro opcional por número de parte
+    const filtro = {};
+    if (req.query.numeroParte) {
+      filtro.numeroParte = req.query.numeroParte;
+    }
+
+    const datos = await Medicion.find(filtro).lean();
+
+    let filas = [];
+
+    datos.forEach(d => {
+      let fila = [];
+
+      // Datos básicos
+      fila.push(d.numeroParte || '');
+      fila.push(d.timestamp ? new Date(d.timestamp).toISOString() : '');
+      fila.push(d.peso || '');
+
+      // r_pequena
+      const r = d.mediciones?.r_pequena || {};
+      fila.push(r.A || '', r.B || '', r.C || '');
+
+      // puntos
+      const puntosKeys = ['p1','p2','p3','p4','p5','p6','p7','p8','p9','p10','p4_2'];
+
+      puntosKeys.forEach(p => {
+        const punto = d.mediciones?.puntos?.[p] || {};
+        const peak = punto.peak || {};
+        const root = punto.root || {};
+
+        fila.push(
+          peak.A || '', peak.B || '', peak.C || '',
+          root.A || '', root.B || '', root.C || ''
+        );
+      });
+
+      // grandes
+      ['grandeD1', 'grandeD2'].forEach(g => {
+        const val = d.mediciones?.[g] || {};
+        fila.push(val.A || '', val.B || '', val.C || '');
+      });
+
+      filas.push(fila.join('\t'));
+    });
+
+    // 🔹 HEADER
+    let header = [
+      'NumeroParte',
+      'Timestamp',
+      'Peso',
+      'rpeq_A','rpeq_B','rpeq_C'
+    ];
+
+    const puntosKeys = ['p1','p2','p3','p4','p5','p6','p7','p8','p9','p10','p4_2'];
+
+    puntosKeys.forEach(p => {
+      header.push(`${p}_peak_A`, `${p}_peak_B`, `${p}_peak_C`);
+      header.push(`${p}_root_A`, `${p}_root_B`, `${p}_root_C`);
+    });
+
+    ['grandeD1','grandeD2'].forEach(g => {
+      header.push(`${g}_A`, `${g}_B`, `${g}_C`);
+    });
+
+    const contenido = header.join('\t') + '\n' + filas.join('\n');
+
+    // 🔹 Render
+    res.render('minitab', {
+      contenido,
+      partes,
+      numeroParteSeleccionado: req.query.numeroParte || ''
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Error al generar datos para Minitab");
+  }
+});
 
 // 📊 Vista de gráfico X̄-R
 
